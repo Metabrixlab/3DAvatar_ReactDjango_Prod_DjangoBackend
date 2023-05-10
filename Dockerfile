@@ -22,7 +22,7 @@ RUN echo "dependencies installed"
 # Install necessary packages
 RUN apt-get install -y \
     python \
-    python-pip
+    python3-pip
 
 RUN mkdir /code
 WORKDIR /code
