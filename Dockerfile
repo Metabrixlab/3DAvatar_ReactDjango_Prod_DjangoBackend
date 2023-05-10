@@ -14,10 +14,10 @@ RUN \
   rm -rf /var/lib/apt/lists/*
 
 RUN echo "dependencies installed"
-# Add files.
-ADD root/.bashrc /root/.bashrc
-ADD root/.gitconfig /root/.gitconfig
-ADD root/.scripts /root/.scripts
+# # Add files.
+# ADD root/.bashrc /root/.bashrc
+# ADD root/.gitconfig /root/.gitconfig
+# ADD root/.scripts /root/.scripts
 
 RUN mkdir /code
 WORKDIR /code
