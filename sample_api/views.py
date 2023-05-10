@@ -51,7 +51,7 @@ def submit1(request):
         cv2.imwrite("media/original/test.png", np_img)
         
         os.system("pwd")
-        os.system("python3 tracer/main.py")
+        os.system("python3 3d_avatar/main.py")
         
         mask_img = cv2.imread("media/mask/test.png")
         
