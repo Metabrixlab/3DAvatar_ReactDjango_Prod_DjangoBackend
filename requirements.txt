@@ -26,7 +26,7 @@ tqdm==4.62.2
 wincertstore==0.2
 numpy
 open3d
-trimsh
+trimesh
 Django #==4.1.4
 djangorestframework==3.14.0
 opencv-python==4.6.0.66
