@@ -1,4 +1,4 @@
-# Webapp - App2
+# Webapp - Django 3D Avatar
 Demo webapp, with react frontend and django backend for basic image processing.
 
 ## Running the app
@@ -20,5 +20,5 @@ Demo webapp, with react frontend and django backend for basic image processing.
 ## Demo on colab
 <hr/>
 
-Everything is demonstarted on the [colab](https://colab.research.google.com/drive/1DjS9FcvaJcTslr_9EVsGc5ePVzm-aGJm?usp=sharing)
+Everything is demonstarted on the [colab](https://colab.research.google.com/drive/1jITWb3icYkmCPguySCfU0iMISFZ6kxlR?authuser=1#scrollTo=xawMeCKJPG1f)
 
