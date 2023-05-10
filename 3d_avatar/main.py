@@ -50,7 +50,7 @@ def main(args):
     file_name = image_path.split("/")[-1]
 
     err_msg = "ALL OK!"
-    image_raw = Image.open(io.BytesIO(image_path))
+    image_raw = Image.open(image_path)
     image = image_raw.resize(
         (800, int(800 * image_raw.size[1] / image_raw.size[0])),
         Image.Resampling.LANCZOS

@@ -28,5 +28,6 @@ numpy
 open3d
 trimesh
 Django #==4.1.4
+transformers
 djangorestframework==3.14.0
 opencv-python==4.6.0.66
