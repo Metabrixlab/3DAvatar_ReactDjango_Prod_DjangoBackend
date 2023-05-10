@@ -1,6 +1,8 @@
 FROM ubuntu:20.04
 RUN echo "Ubuntu Had setup"
 
+# Disable timezone prompt
+ENV DEBIAN_FRONTEND=noninteractive
 # Install.
 RUN \
   sed -i 's/# \(.*multiverse$\)/\1/g' /etc/apt/sources.list && \
