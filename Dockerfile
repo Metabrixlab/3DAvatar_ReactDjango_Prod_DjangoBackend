@@ -20,8 +20,7 @@ RUN echo "dependencies installed"
 # ADD root/.scripts /root/.scripts
 
 # Install necessary packages
-RUN apt-get install -y \
-    python \
+RUN apt-get install -y python3 && \
     python3-pip
 
 RUN mkdir /code
