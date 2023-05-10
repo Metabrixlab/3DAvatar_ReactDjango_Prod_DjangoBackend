@@ -19,6 +19,11 @@ RUN echo "dependencies installed"
 # ADD root/.gitconfig /root/.gitconfig
 # ADD root/.scripts /root/.scripts
 
+# Install necessary packages
+RUN apt-get install -y \
+    python3 \
+    python3-pip
+
 RUN mkdir /code
 WORKDIR /code
 COPY requirements.txt /code/
