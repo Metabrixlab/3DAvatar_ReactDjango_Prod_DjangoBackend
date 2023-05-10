@@ -8,112 +8,96 @@ import datetime
 import sys
 import io
 import trimesh
-
+import warnings
 from PIL import Image
 from pathlib import Path
 from transformers import DPTFeatureExtractor, DPTForDepthEstimation
-from azure.storage.blob import BlobServiceClient
+# from azure.storage.blob import BlobServiceClient
+
+from config import getConfig
+warnings.filterwarnings('ignore')
+args = getConfig()
 
 
 feature_extractor = DPTFeatureExtractor.from_pretrained("Intel/dpt-large")
 model = DPTForDepthEstimation.from_pretrained("Intel/dpt-large")
 
-torch.hub.download_url_to_file('http://images.cocodataset.org/val2017/000000039769.jpg', 'cats.jpg')
+#torch.hub.download_url_to_file('http://images.cocodataset.org/val2017/000000039769.jpg', 'cats.jpg')
 
-def read_image_from_blob(blob_conn_str, blob_container_name, file_name):
-    # Connect to the Blob Storage account and get the container client
-    blob_service_client = BlobServiceClient.from_connection_string(blob_conn_str)
-    container_client = blob_service_client.get_container_client(blob_container_name)
+# def read_image_from_blob(blob_conn_str, blob_container_name, file_name):
+#     # Connect to the Blob Storage account and get the container client
+#     blob_service_client = BlobServiceClient.from_connection_string(blob_conn_str)
+#     container_client = blob_service_client.get_container_client(blob_container_name)
     
-    # Download the image file from the container
-    blob_client = container_client.get_blob_client(file_name)
-    image_data = blob_client.download_blob().content_as_bytes()
+#     # Download the image file from the container
+#     blob_client = container_client.get_blob_client(file_name)
+#     image_data = blob_client.download_blob().content_as_bytes()
     
-    # Print the size of the image file
-    image_size = len(image_data)
-    print(f"Downloaded image '{file_name}' with size {image_size} bytes")
+#     # Print the size of the image file
+#     image_size = len(image_data)
+#     print(f"Downloaded image '{file_name}' with size {image_size} bytes")
     
-    return image_data
+#     return image_data
     
 
-def upload_file_to_blob(blob_conn_str, blob_container_name, local_file_path, blob_file_name):
-     #container_name = "filefoldertest"
-     blob_service_client = BlobServiceClient.from_connection_string(blob_conn_str)
-     blob_client = blob_service_client.get_blob_client(container=blob_container_name, blob=blob_file_name)
-     try:
-       blob_service_client.create_container(blob_container_name)
-     except:
-       pass
-
-     with open(local_file_path,"rb") as data:
-        blob_client.upload_blob(data, overwrite=True)
-        print(f"Uploaded {blob_file_name}.")    
-
-
-def process_image(image_path, gender, auth):
-    blob_conn_str = "DefaultEndpointsProtocol=https;AccountName=project01rgbba3;AccountKey=9FdBLtdJWDlNvyMnG+O+R8FQ3+iUmgaiqQT4tQmkpV5XPy/mBTpB/z+w4F496qPD71ALtMx+RGlB+AStmfDWsg==;EndpointSuffix=core.windows.net"
-    blob_container_name = "api-container"
+def main(args):
+    # blob_conn_str = "DefaultEndpointsProtocol=https;AccountName=project01rgbba3;AccountKey=9FdBLtdJWDlNvyMnG+O+R8FQ3+iUmgaiqQT4tQmkpV5XPy/mBTpB/z+w4F496qPD71ALtMx+RGlB+AStmfDWsg==;EndpointSuffix=core.windows.net"
+    # blob_container_name = "api-container"
+    # file_name = image_path.split("/")[-1]
+    
+    # print(">>>",bool(auth),">>",bool(gender))
+    image_path = "./media/original/test.png"
     file_name = image_path.split("/")[-1]
-    
-    print(">>>",bool(auth),">>",bool(gender))
-    image_path = read_image_from_blob(blob_conn_str, blob_container_name, file_name)
 
-    if not auth or not gender:
-        print("nonell")
-        err_msg = "Please enter the Inputs!"
-        json_string = "ERROR"
-        return [err_msg,json_string]
+    err_msg = "ALL OK!"
+    image_raw = Image.open(io.BytesIO(image_path))
+    image = image_raw.resize(
+        (800, int(800 * image_raw.size[1] / image_raw.size[0])),
+        Image.Resampling.LANCZOS
+    )
 
-    else:
-        err_msg = "ALL OK!"
-        image_raw = Image.open(io.BytesIO(image_path))
-        image = image_raw.resize(
-            (800, int(800 * image_raw.size[1] / image_raw.size[0])),
-            Image.Resampling.LANCZOS
-        )
+    # prepare image for the model
+    encoding = feature_extractor(image, return_tensors="pt")
 
-        # prepare image for the model
-        encoding = feature_extractor(image, return_tensors="pt")
+    # forward pass
+    with torch.no_grad():
+        outputs = model(**encoding)
+        predicted_depth = outputs.predicted_depth
 
-        # forward pass
-        with torch.no_grad():
-            outputs = model(**encoding)
-            predicted_depth = outputs.predicted_depth
+    # interpolate to original size
+    prediction = torch.nn.functional.interpolate(
+        predicted_depth.unsqueeze(1),
+        size=image.size[::-1],
+        mode="bicubic",
+        align_corners=False,
+    ).squeeze()
 
-        # interpolate to original size
-        prediction = torch.nn.functional.interpolate(
-            predicted_depth.unsqueeze(1),
-            size=image.size[::-1],
-            mode="bicubic",
-            align_corners=False,
-        ).squeeze()
+    output = prediction.cpu().numpy()
+    depth_image = (output * 255 / np.max(output)).astype('uint8')
 
-        output = prediction.cpu().numpy()
-        depth_image = (output * 255 / np.max(output)).astype('uint8')
+    try:
+        gltf_path = create_3d_obj(np.array(image), depth_image, file_name.split(".")[0])
+        # upload_file_to_blob(blob_conn_str, blob_container_name, gltf_path, file_name.split(".")[0]+".glb")
+        
+        # img = Image.fromarray(depth_image)
+        with open(gltf_path, 'rb') as f:
+            glb_data = f.read()
 
-        try:
-            gltf_path = create_3d_obj(np.array(image), depth_image, file_name.split(".")[0])
-            upload_file_to_blob(blob_conn_str, blob_container_name, gltf_path, file_name.split(".")[0]+".glb")
-            
-            # img = Image.fromarray(depth_image)
-            with open(gltf_path, 'rb') as f:
-                glb_data = f.read()
-
-            encoded_data = base64.b64encode(glb_data).decode('utf-8')
-            now = datetime.datetime.now()
-            glb_dict = [{"glb_data" : encoded_data,
-                        "gender" : gender,
-                        "name" : auth,
-                        "time" : now.strftime("D-%Y-%m-%d")+now.strftime("_T-%H-%M-%S")}]
-            glb_dict1 = [{"log" : err_msg}]            
-            json_string = json.dumps(glb_dict)
-            json_string1 = json.dumps(glb_dict1)
-            return [json_string1,json_string]
+        encoded_data = base64.b64encode(glb_data).decode('utf-8')
+        now = datetime.datetime.now()
+        glb_dict = [{"glb_data" : encoded_data,
+                    # "gender" : gender,
+                    # "name" : auth,
+                    "time" : now.strftime("D-%Y-%m-%d")+now.strftime("_T-%H-%M-%S")}]
+        glb_dict1 = [{"log" : err_msg}]            
+        json_string = json.dumps(glb_dict)
+        json_string1 = json.dumps(glb_dict1)
+        return [json_string1,json_string]
 
 
-        except:
-            print("Error reconstructing 3D model")
-            raise Exception("Error reconstructing 3D model")
+    except:
+        print("Error reconstructing 3D model")
+        raise Exception("Error reconstructing 3D model")
 
 def create_3d_obj(rgb_image, depth_image, image_path, depth=10):
     depth_o3d = o3d.geometry.Image(depth_image)
@@ -169,23 +153,7 @@ description = "This demo is a variation from the original <a href='https://huggi
 examples =[['cats.jpg']]
 
 if __name__ == '__main__':
-    iface = gr.Interface(fn=process_image,
-                        inputs=[
-                            gr.Text(
-                                label="Input Image*",
-                                ),
-                            gr.Text(
-                                label="Select Gender*",
-                                ),
-                            gr.Text(
-                                label="User Name*",
-                                )  
-                            ],
-                        outputs = [gr.Text(
-                                label="Log",
-                                ),
-                                gr.Text(
-                                label="Output",
-                                )]
-                        )  
-    iface.launch(debug=True,server_name="0.0.0.0", server_port=8070)       
+    print("!@!@!@")
+    main(args)
+else:
+    print("&!$!5!4")
