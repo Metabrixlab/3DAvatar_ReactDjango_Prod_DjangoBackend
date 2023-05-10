@@ -1,5 +1,5 @@
-FROM python:3
-ENV PYTHONUNBUFFERED=1
+FROM ubuntu:20.04
+RUN apt-get update
 RUN mkdir /code
 WORKDIR /code
 COPY requirements.txt /code/
